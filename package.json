@@ -1,0 +1,16 @@
+{
+  "name": "huangdao-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "荒岛突围：可联机的俯视角大逃杀小游戏（游戏页面 + 联机中转服务器）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  }
+}
