@@ -32,10 +32,27 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(-
 #cv{position:fixed;inset:0;width:100%;height:100%;display:block}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
 #btnFire{position:fixed;right:calc(34px + env(safe-area-inset-right,0px));bottom:calc(94px + env(safe-area-inset-bottom,0px));width:86px;height:86px;border-radius:50%;background:rgba(232,72,60,.82);border:3px solid rgba(255,255,255,.55);font-size:15px;font-weight:700;letter-spacing:.12em;touch-action:none;box-shadow:0 6px 24px rgba(0,0,0,.35)}
-#btnFire.on{background:rgba(255,52,40,.96);transform:scale(.94)}
+#btnFire.on{background:rgba(255,52,40,.96);filter:brightness(1.15)}
 #btnScope{position:fixed;right:calc(136px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:12px;letter-spacing:.06em}
 #btnScope.on{border-color:var(--amber);color:var(--amber)}
 .ghost:disabled{opacity:.5}
+#layoutEd{position:fixed;inset:0;z-index:9;background:rgba(5,10,14,.42);overflow:hidden}
+.edTile{position:absolute;display:flex;align-items:center;justify-content:center;background:rgba(10,16,20,.72);border:1px solid rgba(236,242,236,.3);border-radius:12px;font-size:13px;color:var(--text);touch-action:none;cursor:grab;box-sizing:border-box;text-align:center;line-height:1.2}
+.edTile.round{border-radius:50%}
+.edTile.fire{background:rgba(232,72,60,.82);border:3px solid rgba(255,255,255,.55);font-weight:700}
+.edTile.jump{background:var(--amber);color:#1d1406;border-radius:40px;font-family:var(--display);font-size:22px}
+.edTile.pick{background:rgba(255,181,61,.92);color:#1d1406;font-weight:600}
+.edTile.car{background:rgba(110,165,255,.92);color:#08142a;border-radius:29px;font-weight:600}
+.edTile.stick{background:rgba(10,16,20,.28);border:2px solid rgba(255,255,255,.35)}
+.edTile.sel{outline:2px dashed var(--amber);outline-offset:5px}
+.edGhost{position:absolute;border:1px dashed rgba(255,255,255,.3);border-radius:10px;color:rgba(255,255,255,.5);font-size:11px;display:flex;align-items:center;justify-content:center;pointer-events:none;box-sizing:border-box}
+.edBar{position:absolute;left:50%;top:calc(8px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:rgba(10,16,20,.92);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;width:min(470px,calc(100vw - 32px));box-sizing:border-box;z-index:2}
+.edRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.edRow b{font-size:13px;font-weight:600}
+.edRow label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex:1;min-width:130px}
+.edRow input[type=range]{flex:1;min-width:0;accent-color:var(--amber);touch-action:manipulation}
+.edRow .go.sm{font-size:17px;padding:7px 18px}
+.edRow .ghost{padding:7px 12px}
 button{font-family:inherit;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
@@ -214,6 +231,14 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(56px,13vw,104px);l
   </div>
 </div>
 
+<div id="layoutEd" hidden>
+  <div id="edTiles"></div>
+  <div class="edBar">
+    <div class="edRow"><b id="edName">点选一个按钮，拖动换位置</b><span class="hint" id="edOrient"></span></div>
+    <div class="edRow"><label for="edSize">大小<input type="range" id="edSize" min="60" max="160" step="5" value="100"></label><label for="edOpac">透明度<input type="range" id="edOpac" min="25" max="100" step="5" value="100"></label></div>
+    <div class="edRow"><button class="ghost" id="edReset" type="button">恢复默认</button><button class="ghost" id="edCancel" type="button">取消</button><button class="go sm" id="edSave" type="button">保存</button></div>
+  </div>
+</div>
 <div id="bigWrap" hidden><canvas id="big" width="900" height="900"></canvas><p>点击任意位置关闭地图</p></div>
 
 <div class="screen" id="menu">
@@ -228,7 +253,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(56px,13vw,104px);l
     <nav class="modes" aria-label="游戏模式">
       <button class="mode primary" id="btnSolo" type="button"><b>单人模式</b><span>和 49 名 AI 同岛竞技</span></button>
       <button class="mode" id="btnOnline" type="button"><b>联机模式</b><span>开个房间，和好友在同一座岛上对决</span></button>
-      <div class="minor"><button class="ghost" id="btnHelp" type="button">玩法说明</button><button class="ghost" id="btnSound" type="button">声音 开</button><button class="ghost" id="btnView" type="button" disabled>画面 3D（加载中）</button></div>
+      <div class="minor"><button class="ghost" id="btnHelp" type="button">玩法说明</button><button class="ghost" id="btnSound" type="button">声音 开</button><button class="ghost" id="btnView" type="button" disabled>画面 3D（加载中）</button><button class="ghost" id="btnLayout" type="button">按键布局</button></div>
     </nav>
   </div>
 </div>
@@ -882,19 +907,21 @@ function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=part
 // ---------------- input ----------------
 const keys={},mouse={x:0,y:0,down:false,used:false},sticks={move:null,aim:null,look:null};let fireLast=null;let isTouch=false;
 const STICK=58;
-function stickVec(s){if(!s)return null;let dx=s.x-s.ox,dy=s.y-s.oy;const l=hyp(dx,dy);if(l>STICK){s.ox=s.x-dx/l*STICK;s.oy=s.y-dy/l*STICK;dx=s.x-s.ox;dy=s.y-s.oy}
-  const m=Math.min(1,hyp(dx,dy)/STICK);return{x:dx/STICK,y:dy/STICK,m}}
+function stickVec(s){if(!s)return null;const R=s.r||STICK;let dx=s.x-s.ox,dy=s.y-s.oy;const l=hyp(dx,dy);if(l>R){s.ox=s.x-dx/l*R;s.oy=s.y-dy/l*R;dx=s.x-s.ox;dy=s.y-s.oy}
+  const m=Math.min(1,hyp(dx,dy)/R);return{x:dx/R,y:dy/R,m}}
 cv.addEventListener('pointerdown',e=>{
   if(is3D()){
     if(e.pointerType==='mouse'){mouse.used=true;mouse.x=e.clientX;mouse.y=e.clientY;
       if(state==='play'&&player&&player.alive){if(document.pointerLockElement!==cv){try{const r=cv.requestPointerLock&&cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(_){}}
         if(e.button===0)mouse.down=true;else if(e.button===2)setScope(!R3.cam.scoped)}return}
     isTouch=true;e.preventDefault();if(state!=='play'||!player.alive)return;
-    const s={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY};if(e.clientX<VW*.5){if(!sticks.move)sticks.move=s}else if(!sticks.look)sticks.look=s;return}
+    const s={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY},hm=stickHome(),nearH=hyp(e.clientX-hm.x,e.clientY-hm.y)<hm.r*1.5;
+    if((e.clientX<VW*.5||nearH)&&!sticks.move){if(nearH){s.ox=hm.x;s.oy=hm.y}s.r=hm.r;sticks.move=s}else if(!sticks.look)sticks.look=s;return}
   if(e.pointerType==='mouse'){mouse.used=true;mouse.x=e.clientX;mouse.y=e.clientY;if(e.button===0)mouse.down=true;return}
   isTouch=true;mouse.used=false;e.preventDefault();if(state!=='play'||!player.alive)return;
   const s={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY};
-  if(e.clientX<VW*.5){if(!sticks.move)sticks.move=s}else if(!sticks.aim)sticks.aim=s});
+  const hm=stickHome(),nearH=hyp(e.clientX-hm.x,e.clientY-hm.y)<hm.r*1.5;
+  if((e.clientX<VW*.5||nearH)&&!sticks.move){if(nearH){s.ox=hm.x;s.oy=hm.y}s.r=hm.r;sticks.move=s}else if(!sticks.aim)sticks.aim=s});
 addEventListener('pointermove',e=>{
   if(is3D()){if(e.pointerType==='mouse'){const locked=document.pointerLockElement===cv;if(locked)look3D(e.movementX||0,e.movementY||0,true);else if(mouse.down&&state==='play')look3D(e.movementX||0,e.movementY||0,false);return}
     const L=sticks.look;if(L&&L.id===e.pointerId){look3D(e.clientX-L.x,e.clientY-L.y);L.x=e.clientX;L.y=e.clientY}
@@ -1020,7 +1047,7 @@ function buildVignette(){vignette=mk(VW*DPR/2,VH*DPR/2);const g=vignette.getCont
   const gr=g.createRadialGradient(w/2,h/2,Math.min(w,h)*.35,w/2,h/2,Math.max(w,h)*.75);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(4,10,14,.5)');g.fillStyle=gr;g.fillRect(0,0,w,h)}
 function resize(){DPR=Math.min(window.devicePixelRatio||1,2);VW=innerWidth;VH=innerHeight;cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);buildVignette();buildPatterns();if(R3)resize3D();
   $('rotHint').hidden=!(VH>VW&&VW<700)}
-addEventListener('resize',resize);
+addEventListener('resize',()=>{resize();applyLayout();if(ed)buildEdTiles()});
 
 function shade(hex,amt){const c=hexRgb(hex);return`rgb(${c.map(v=>clamp(Math.round(v+amt*255),0,255)).join(',')})`}
 function drawEnt(e,alpha){const r=e.r;ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=alpha;
@@ -1196,15 +1223,15 @@ function drawScreen(){
     ctx.strokeStyle=g;ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(sx+Math.cos(p.angle)*30,sy+Math.sin(p.angle)*30);ctx.lineTo(sx+Math.cos(p.angle)*L,sy+Math.sin(p.angle)*L);ctx.stroke();ctx.setLineDash([])}
   // sticks
   if(isTouch&&p.alive){
-    const drawStick=(s,dx,dy,label,fire)=>{let ox,oy,kx,ky;if(s){ox=s.ox;oy=s.oy;kx=s.x;ky=s.y}else{ox=dx;oy=dy;kx=dx;ky=dy}
-      ctx.globalAlpha=s?1:.55;ctx.fillStyle='rgba(10,16,20,.28)';ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ox,oy,STICK,0,TAU);ctx.fill();ctx.stroke();
+    const drawStick=(s,dx,dy,label,fire,R,al)=>{let ox,oy,kx,ky;if(s){ox=s.ox;oy=s.oy;kx=s.x;ky=s.y}else{ox=dx;oy=dy;kx=dx;ky=dy}const STICK=R;
+      ctx.globalAlpha=(s?1:.55)*al;ctx.fillStyle='rgba(10,16,20,.28)';ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ox,oy,STICK,0,TAU);ctx.fill();ctx.stroke();
       if(fire){ctx.strokeStyle='rgba(255,120,80,.45)';ctx.setLineDash([4,6]);ctx.beginPath();ctx.arc(ox,oy,STICK*.62,0,TAU);ctx.stroke();ctx.setLineDash([])}
       const firing=fire&&s&&hyp(kx-ox,ky-oy)/STICK>.62;ctx.fillStyle=firing?'rgba(255,120,80,.75)':'rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(kx,ky,24,0,TAU);ctx.fill();
       if(!s){ctx.fillStyle='rgba(255,255,255,.75)';ctx.font='12px -apple-system,PingFang SC,sans-serif';ctx.textAlign='center';ctx.fillText(label,ox,oy+STICK+16)}ctx.globalAlpha=1};
-    drawStick(sticks.move,92+safe.l,VH-96-safe.b,'移动',false);drawStick(sticks.aim,VW-92-safe.r,VH-96-safe.b,'瞄准 · 推到外圈开火',true)}}
-const safe={l:0,r:0,b:0};
-function readSafe(){const d=document.createElement('div');d.style.cssText='position:fixed;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);top:0;pointer-events:none;visibility:hidden';document.body.appendChild(d);
-  const r=d.getBoundingClientRect();safe.l=r.left;safe.r=innerWidth-r.right;safe.b=innerHeight-r.bottom;d.remove()}
+    const hm=stickHome();drawStick(sticks.move,hm.x,hm.y,'移动',false,hm.r,hm.a);drawStick(sticks.aim,VW-92-safe.r,VH-96-safe.b,'瞄准 · 推到外圈开火',true,58,1)}}
+const safe={l:0,r:0,b:0,t:0};
+function readSafe(){const d=document.createElement('div');d.style.cssText='position:fixed;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);top:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden';document.body.appendChild(d);
+  const r=d.getBoundingClientRect();safe.l=r.left;safe.r=innerWidth-r.right;safe.b=innerHeight-r.bottom;safe.t=r.top;d.remove()}
 function drawMap(c,big){const g=c.getContext('2d'),S=c.width,k=S/W;g.setTransform(1,0,0,1,0,0);g.fillStyle='#1f5d82';g.fillRect(0,0,S,S);g.drawImage(minimapImg,0,0,S,S);
   if(big){g.font=`${Math.round(S/42)}px 'ZCOOL QingKe HuangYou',PingFang SC,sans-serif`;g.textAlign='center';for(const t of towns){g.fillStyle='rgba(0,0,0,.55)';g.fillText(t.name,t.x*k+1,t.y*k+1);g.fillStyle='#fff';g.fillText(t.name,t.x*k,t.y*k)}}
   if(!zone)return;
@@ -1381,6 +1408,8 @@ function playerInput3D(dt){const p=player,c=R3.cam;if(!p.alive){p.mx=p.my=0;p.fi
   p.angle=c.yaw}
 // the crosshair ray, walked forward from the player: the first wall, ground or character it meets is where the bullet is sent
 function aimRay3D(d){const p=player,cam=R3.camera,o=cam.position,dv=R3.dirV||(R3.dirV=new R3.T.Vector3());cam.getWorldDirection(dv);
+  // the camera has not caught up with the player yet (first frame after landing, leaving a car, a teleport): shoot level along the view
+  if(hyp(o.x-p.x,o.z-p.y)>R3.cam.dist+80)return{h0:MUZZLE_H,slope:0,yaw:R3.cam.yaw};
   const hz=Math.max(.05,Math.hypot(dv.x,dv.z)),max=(d.range+300)/hz,start=(R3.cam.dist*Math.cos(R3.cam.pitch)+p.r)/hz,cands=[];
   for(const e of ents)if(e!==p&&e.alive&&e.phase==='ground'&&!e.veh&&hyp(e.x-p.x,e.y-p.y)<d.range+60)cands.push(e);
   let ax=o.x+dv.x*max,ay=o.z+dv.z*max,ah=o.y+dv.y*max;
@@ -1500,7 +1529,7 @@ function drawOverlay3D(){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.widt
   const prog=p.healing?1-p.healing.t/p.healing.max:p.reloading>0&&w?1-p.reloading/WD[w.t].reload:-1;
   if(prog>=0){ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=5;ctx.beginPath();ctx.arc(cx,cy+56,20,0,TAU);ctx.stroke();ctx.strokeStyle=p.healing?'#62d68c':'#ffb53d';ctx.beginPath();ctx.arc(cx,cy+56,20,-Math.PI/2,-Math.PI/2+prog*TAU);ctx.stroke();
     ctx.font='600 12px -apple-system,PingFang SC,sans-serif';ctx.fillStyle='#fff';ctx.fillText(p.healing?HEALS[p.healing.k].name:'换弹',cx,cy+92)}
-  if(isTouch&&p.alive){const s=sticks.move,ox=s?s.ox:92+safe.l,oy=s?s.oy:VH-96-safe.b,kx=s?s.x:ox,ky=s?s.y:oy;ctx.globalAlpha=s?1:.55;
+  if(isTouch&&p.alive){const hm=stickHome(),STICK=hm.r,s=sticks.move,ox=s?s.ox:hm.x,oy=s?s.oy:hm.y,kx=s?s.x:ox,ky=s?s.y:oy;ctx.globalAlpha=(s?1:.55)*hm.a;
     ctx.fillStyle='rgba(10,16,20,.28)';ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ox,oy,STICK,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(kx,ky,24,0,TAU);ctx.fill();
     if(!s){ctx.fillStyle='rgba(255,255,255,.75)';ctx.font='12px -apple-system,PingFang SC,sans-serif';ctx.fillText('移动',ox,oy+STICK+16)}
     if(!sticks.look&&!fireHeld){ctx.fillText('拖动右半屏转视角',VW*.72,VH*.42)}ctx.globalAlpha=1}}
@@ -1721,6 +1750,61 @@ function netRecv(dt){const me=net.myPeer||myPeerId();net.myPeer=me;const present
 function netTick(dt){if(!net.api)return;net.uiT-=dt;if(net.uiT<=0){net.uiT=.25;netUI();netAutoJoin()}
   if(net.on&&player&&net.match&&state!=='menu'){netRecv(dt);netSend(false)}}
 
+// ---------------- touch button layout ----------------
+// Players drag the on-screen buttons where they like, resize them and set their opacity. Positions are stored as fractions of the
+// screen, one set for landscape and one for portrait, in this browser only.
+const LAYOUT_CTRLS=[
+  {id:'fire',el:'btnFire',name:'开火',w:86,h:86,cls:'round fire',def:()=>[VW-77-safe.r,VH-137-safe.b]},
+  {id:'scope',el:'btnScope',name:'开镜',w:54,h:54,cls:'round',def:()=>[VW-163-safe.r,VH-111-safe.b]},
+  {id:'reload',el:'btnReload',name:'换弹',w:58,h:58,cls:'round',def:()=>[VW-179-safe.r,VH-169-safe.b]},
+  {id:'car',el:'btnCar',name:'上车',w:110,h:58,cls:'car',def:()=>[VW-275-safe.r,VH-169-safe.b]},
+  {id:'pick',el:'btnPick',name:'拾取',w:140,h:38,cls:'pick',def:()=>[VW*.72-70,VH*.54-19]},
+  {id:'jump',el:'btnJump',name:'跳 伞',w:150,h:56,cls:'jump',def:()=>[VW/2,VH-148-safe.b]},
+  {id:'heals',el:'heals',name:'药品栏',w:122,h:92,cls:'',def:()=>[VW-73-safe.r,182+safe.t]},
+  {id:'stick',el:null,name:'移动摇杆',w:116,h:116,cls:'round stick',def:()=>[92+safe.l,VH-96-safe.b]}];
+let layout={land:{},port:{}};
+try{const j=JSON.parse(localStorage.getItem('br-layout')||'null');if(j&&typeof j==='object')layout={land:j.land&&typeof j.land==='object'?j.land:{},port:j.port&&typeof j.port==='object'?j.port:{}}}catch(_){}
+const orient=()=>VW>=VH?'land':'port';
+function ctrlCfg(id){const c=layout[orient()][id];return c&&Number.isFinite(c.x)&&Number.isFinite(c.y)?{x:clamp(c.x,0,1),y:clamp(c.y,0,1),s:clamp(+c.s||1,.6,1.6),o:clamp(+c.o||1,.25,1)}:null}
+function stickHome(){const c=ctrlCfg('stick');return c?{x:c.x*VW,y:c.y*VH,r:58*c.s,a:c.o}:{x:92+safe.l,y:VH-96-safe.b,r:58,a:1}}
+function applyLayout(){for(const c of LAYOUT_CTRLS){if(!c.el)continue;const el=$(c.el),v=ctrlCfg(c.id);
+  if(v){el.style.left=(v.x*100)+'%';el.style.top=(v.y*100)+'%';el.style.right='auto';el.style.bottom='auto';el.style.transform=`translate(-50%,-50%) scale(${v.s})`;el.style.opacity=v.o}
+  else{el.style.left=el.style.top=el.style.right=el.style.bottom=el.style.transform=el.style.opacity=''}}}
+let ed=null,edDrag=null;
+function edGet(c){const v=ed.cfg[c.id];if(v)return v;const d=c.def();return{x:d[0]/VW,y:d[1]/VH,s:1,o:1}}
+function edTile(c){return document.querySelector(`.edTile[data-id="${c.id}"]`)}
+function posTile(t,v){t.style.left=(v.x*VW)+'px';t.style.top=(v.y*VH)+'px';t.style.transform=`translate(-50%,-50%) scale(${v.s})`;t.style.opacity=v.o}
+function buildEdTiles(){const box=$('edTiles');box.textContent='';
+  // the parts of the HUD that do not move, shown as outlines so buttons can be kept clear of them
+  const ghost=(txt,css)=>{const g=document.createElement('div');g.className='edGhost';g.textContent=txt;g.style.cssText=css;box.appendChild(g)};
+  ghost('存活 · 淘汰 · 毒圈',`left:${12+safe.l}px;top:${10+safe.t}px;width:230px;height:70px`);
+  ghost('小地图',`right:${12+safe.r}px;top:${10+safe.t}px;width:116px;height:116px`);
+  const sw=Math.min(330,VW*.52);ghost('枪械栏 · 血条',`left:${VW/2-sw/2}px;bottom:${10+safe.b}px;width:${sw}px;height:72px`);
+  for(const c of LAYOUT_CTRLS){const t=document.createElement('div');t.className='edTile '+c.cls;t.dataset.id=c.id;t.textContent=c.name;t.style.width=c.w+'px';t.style.height=c.h+'px';
+    posTile(t,edGet(c));t.addEventListener('pointerdown',edDown);box.appendChild(t)}
+  if(ed.sel){const t=edTile(ed.sel);if(t)t.classList.add('sel')}}
+function selectTile(c){ed.sel=c;for(const t of document.querySelectorAll('.edTile'))t.classList.toggle('sel',!!c&&t.dataset.id===c.id);
+  $('edName').textContent=c?`已选中：${c.name.replace(' ','')}（拖动换位置）`:'点选一个按钮，拖动换位置';$('edSize').disabled=$('edOpac').disabled=!c;
+  if(c){const v=edGet(c);$('edSize').value=Math.round(v.s*100);$('edOpac').value=Math.round(v.o*100)}}
+function edDown(e){e.preventDefault();e.stopPropagation();const t=e.currentTarget,c=LAYOUT_CTRLS.find(q=>q.id===t.dataset.id),v=ed.cfg[c.id]=Object.assign({},edGet(c));selectTile(c);
+  edDrag={id:e.pointerId,t,c,ox:v.x*VW-e.clientX,oy:v.y*VH-e.clientY};try{t.setPointerCapture(e.pointerId)}catch(_){}}
+addEventListener('pointermove',e=>{if(!ed||!edDrag||e.pointerId!==edDrag.id)return;const {t,c}=edDrag,v=ed.cfg[c.id],hw=c.w*v.s/2,hh=c.h*v.s/2;
+  v.x=clamp(e.clientX+edDrag.ox,hw,VW-hw)/VW;v.y=clamp(e.clientY+edDrag.oy,hh,VH-hh)/VH;posTile(t,v)});
+addEventListener('pointerup',e=>{if(edDrag&&e.pointerId===edDrag.id)edDrag=null});
+addEventListener('pointercancel',e=>{if(edDrag&&e.pointerId===edDrag.id)edDrag=null});
+function edSlide(key,lo,hi,input){const c=ed&&ed.sel;if(!c)return;const v=ed.cfg[c.id]=Object.assign({},edGet(c));v[key]=clamp(+input.value/100,lo,hi);
+  // keep a resized button on screen
+  if(key==='s'){const hw=c.w*v.s/2/VW,hh=c.h*v.s/2/VH;v.x=clamp(v.x,hw,1-hw);v.y=clamp(v.y,hh,1-hh)}posTile(edTile(c),v)}
+function openLayout(){readSafe();ed={cfg:JSON.parse(JSON.stringify(layout[orient()])),sel:null};show(null);$('layoutEd').hidden=false;
+  $('edOrient').textContent=orient()==='land'?'正在编辑横屏布局（竖屏另存一套）':'正在编辑竖屏布局（横屏另存一套）';buildEdTiles();selectTile(null)}
+function closeLayout(){ed=null;edDrag=null;$('layoutEd').hidden=true;show('menu')}
+$('btnLayout').addEventListener('click',openLayout);
+$('edSize').addEventListener('input',()=>edSlide('s',.6,1.6,$('edSize')));
+$('edOpac').addEventListener('input',()=>edSlide('o',.25,1,$('edOpac')));
+$('edReset').addEventListener('click',()=>{if(!ed)return;ed.cfg={};ed.sel=null;buildEdTiles();selectTile(null)});
+$('edCancel').addEventListener('click',closeLayout);
+$('edSave').addEventListener('click',()=>{if(!ed)return;layout[orient()]=ed.cfg;try{localStorage.setItem('br-layout',JSON.stringify(layout))}catch(_){}applyLayout();closeLayout()});
+
 // ---------------- flow ----------------
 function rec(){try{return JSON.parse(localStorage.getItem('br-rec')||'null')}catch(_){return null}}
 function showRec(){const r=rec();const s=r?`个人最佳：第 ${r.best} 名 · 单局最多淘汰 ${r.kills} 人 · 共吃鸡 ${r.wins||0} 次`:'还没有战绩，第一局祝你好运';$('rec').textContent=s;$('rec2').textContent=s}
@@ -1759,13 +1843,16 @@ try{setMuted(localStorage.getItem('br-muted')==='1')}catch(_){}
 function updateViewBtn(){const b=$('btnView');if(threeState==='loading'){b.textContent='画面 3D（加载中）';b.disabled=true}else if(threeState==='none'){b.textContent='画面 2D（3D 不可用）';b.disabled=true}else{b.disabled=false;b.textContent=view3d?'画面 3D':'画面 2D'}}
 $('btnView').addEventListener('click',()=>{if(threeState!=='ok')return;view3d=!view3d;try{localStorage.setItem('br-view',view3d?'3d':'2d')}catch(_){}updateViewBtn();if(!view3d&&R3)R3.renderer.domElement.style.display='none'});
 
-buildTextures();buildSprites();resize();genWorld();showRec();
+buildTextures();buildSprites();resize();readSafe();applyLayout();genWorld();showRec();
 loadThree().then(ok=>{let good=false;if(ok){try{good=init3D()}catch(err){console.error(err);if(R3&&R3.renderer)R3.renderer.domElement.remove();R3=null}}threeState=good?'ok':'none';updateViewBtn()});
 window.__br={step(n,dt){for(let i=0;i<n;i++)update(dt||1/30)},info(){return{state,alive:ents.length?aliveCount():0,phase:player&&player.phase,zone:zone&&{phase:zone.phase,state:zone.state,r:Math.round(zone.r)},loot:loot.length,t:Math.round(gameT)}},jump(){player&&jump(player)},god(){player.hp=1e9},
   drive(){let b=null,bd=1e9;for(const v of vehicles){const d=hyp(v.x-player.x,v.y-player.y);if(d<bd&&!v.driver){bd=d;b=v}}if(!b)return null;player.x=b.x+b.r+player.r+4;player.y=b.y;enterVeh(player,b);return{t:b.t,x:Math.round(b.x),y:Math.round(b.y)}},
   veh(){const v=player.veh;return v?{x:Math.round(v.x),y:Math.round(v.y),v:Math.round(v.v),hp:Math.round(v.hp)}:null},
   boom(){const v=player.veh;if(v)damageVeh(v,9999,null)},
   zstat(){return zstat},
+  stickState(){const m=sticks.move;return m?{ox:Math.round(m.ox),oy:Math.round(m.oy),r:Math.round(m.r||0)}:null},
+  layout(){return{saved:JSON.parse(JSON.stringify(layout)),fire:(()=>{const r=$('btnFire').getBoundingClientRect();return[Math.round(r.left+r.width/2),Math.round(r.top+r.height/2),Math.round(r.width)]})(),stick:stickHome(),VW,VH}},
+  showFire(){$('btnFire').hidden=false},
   aimProbe(){const w=curW(player);const a=aimRay3D(WD[w?w.t:'ar']);const t=ents.find(e=>e.isBot&&e.frozen);if(!t)return a;const d=hyp(t.x-player.x,t.y-player.y)-player.r-WD[w.t].len;return{slope:+a.slope.toFixed(4),hAtTarget:Math.round(MUZZLE_H+a.slope*d)}},
   gear(name,armor,helmet){const e=ents.find(q=>q.name===name);e.armor=armor;e.helmet=helmet;e.hp=100},
   sendHead(dmg){const e=[...net.remote.values()][0];if(e)netAddHead(e.peer,dmg);return!!e},
