@@ -5,12 +5,14 @@
 ```
 huangdao-online/
 ├── server.js          联机中转服务器（同时提供游戏页面）
-├── package.json       依赖：只有 ws 8.22.0
+├── package.json       依赖：ws 8.22.0（联机）、three 0.128.0（3D 画面）
 ├── package-lock.json
 └── public/index.html  游戏本体（单人模式 + 联机模式）
 ```
 
 服务器只负责把每个玩家的位置、开火、命中等状态转发给同房间的其他人，不跑游戏逻辑。
+
+游戏默认是 3D 第三人称视角（Three.js 由这个服务器自己提供，不依赖外部 CDN），主界面的「画面」按钮可以切回 2D；设备不支持 3D 时会自动用 2D。
 
 ---
 

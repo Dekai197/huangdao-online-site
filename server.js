@@ -19,13 +19,23 @@ const ROOM_RE = /^[a-z0-9][a-z0-9_.-]{0,47}$/;
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-let page = null;
-function loadPage() { try { page = fs.readFileSync(PAGE); } catch (e) { console.error('cannot read', PAGE, e.message); } }
+let page = null, three = null;
+function loadPage() {
+  try { page = fs.readFileSync(PAGE); } catch (e) { console.error('cannot read', PAGE, e.message); }
+  try { three = fs.readFileSync(require.resolve('three/build/three.min.js')); } catch (e) { console.error('three.js not installed; the page will fall back to a CDN or 2D'); }
+}
 loadPage();
 
 const server = http.createServer((req, res) => {
   const url = (req.url || '/').split('?')[0];
   if (url === '/healthz') { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('ok'); return; }
+  // the 3D view's library is served from node_modules, so the site does not depend on an outside CDN
+  if (url === '/vendor/three.min.js' && (req.method === 'GET' || req.method === 'HEAD')) {
+    if (!three) { res.writeHead(404); res.end('not found'); return; }
+    res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' });
+    res.end(req.method === 'HEAD' ? undefined : three);
+    return;
+  }
   if ((url === '/' || url === '/index.html') && (req.method === 'GET' || req.method === 'HEAD')) {
     if (!page) { res.writeHead(500); res.end('page missing'); return; }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' });
